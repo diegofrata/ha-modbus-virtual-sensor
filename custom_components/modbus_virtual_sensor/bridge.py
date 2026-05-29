@@ -5,11 +5,16 @@ import asyncio
 import contextlib
 import logging
 import socket
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT, UnitOfTemperature
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_time_interval,
+)
 from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_conversion import TemperatureConverter
 
@@ -88,6 +93,7 @@ class ModbusVirtualSensorBridge:
 
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
+        self._unsubs: list = []
 
     @property
     def signal_update(self) -> str:
@@ -99,16 +105,48 @@ class ModbusVirtualSensorBridge:
 
     # --- lifecycle -------------------------------------------------------
     def start(self) -> None:
+        # Recompute the reported values whenever a source sensor changes and on a
+        # slow timer — so they're visible (and current) even before any poll.
+        entities = [
+            entity
+            for zone in self.zones
+            for entity in (zone[CONF_TEMPERATURE_ENTITY], zone[CONF_HUMIDITY_ENTITY])
+        ]
+        if entities:
+            self._unsubs.append(
+                async_track_state_change_event(self.hass, entities, self._on_source_change)
+            )
+        self._unsubs.append(
+            async_track_time_interval(self.hass, self._on_interval, timedelta(seconds=30))
+        )
+        self._refresh()  # populate immediately at startup
         self._task = self.hass.async_create_background_task(
             self._run(), name=f"{self.entry.title} modbus responder"
         )
 
     async def async_stop(self) -> None:
+        for unsub in self._unsubs:
+            unsub()
+        self._unsubs.clear()
         self._stop.set()
         if self._task:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
+
+    @callback
+    def _on_source_change(self, event: Event) -> None:
+        self._refresh()
+
+    @callback
+    def _on_interval(self, now) -> None:
+        self._refresh()
+
+    @callback
+    def _refresh(self) -> None:
+        """Recompute reported values from current sensor states and notify entities."""
+        self._compute_registers()
+        self._notify()
 
     # --- source reading & aggregation ------------------------------------
     def _fresh_state(self, entity_id: str):
