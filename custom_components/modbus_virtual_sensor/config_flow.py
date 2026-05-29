@@ -90,12 +90,8 @@ class ModbusVirtualSensorConfigFlow(ConfigFlow, domain=DOMAIN):
             {
                 vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
                 vol.Required(CONF_HOST): str,
-                vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=65535)
-                ),
-                vol.Required(CONF_UNIT, default=DEFAULT_UNIT): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=247)
-                ),
+                vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int),
+                vol.Required(CONF_UNIT, default=DEFAULT_UNIT): vol.Coerce(int),
                 vol.Required(CONF_TEMPERATURE_ENTITIES): _temperature_selector(),
                 vol.Required(CONF_HUMIDITY_ENTITIES): _humidity_selector(),
             }
@@ -142,19 +138,19 @@ class ModbusVirtualSensorOptionsFlow(OptionsFlow):
                 vol.Required(
                     CONF_TEMP_REGISTER,
                     default=cur.get(CONF_TEMP_REGISTER, DEFAULT_TEMP_REGISTER),
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+                ): vol.Coerce(int),
                 vol.Required(
                     CONF_HUM_REGISTER,
                     default=cur.get(CONF_HUM_REGISTER, DEFAULT_HUM_REGISTER),
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+                ): vol.Coerce(int),
                 vol.Required(
                     CONF_TEMP_SCALE,
                     default=cur.get(CONF_TEMP_SCALE, DEFAULT_SCALE),
-                ): vol.All(vol.Coerce(int), vol.Range(min=1)),
+                ): vol.Coerce(int),
                 vol.Required(
                     CONF_HUM_SCALE,
                     default=cur.get(CONF_HUM_SCALE, DEFAULT_SCALE),
-                ): vol.All(vol.Coerce(int), vol.Range(min=1)),
+                ): vol.Coerce(int),
                 vol.Required(
                     CONF_TEMP_SIGNED,
                     default=cur.get(CONF_TEMP_SIGNED, DEFAULT_TEMP_SIGNED),
@@ -162,7 +158,7 @@ class ModbusVirtualSensorOptionsFlow(OptionsFlow):
                 vol.Required(
                     CONF_IDLE_TIMEOUT,
                     default=cur.get(CONF_IDLE_TIMEOUT, DEFAULT_IDLE_TIMEOUT),
-                ): vol.All(vol.Coerce(int), vol.Range(min=0)),
+                ): vol.Coerce(int),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

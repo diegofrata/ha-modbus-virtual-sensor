@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.device_info import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 
 from .bridge import ModbusVirtualSensorBridge
