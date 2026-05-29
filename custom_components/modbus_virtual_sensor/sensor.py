@@ -67,6 +67,7 @@ class ReportedTemperature(_ZoneStatsMixin, BridgeEntity, SensorEntity):
             **self._zone_stats(),
             "register": b.temp_reg,
             "scale": b.temp_scale,
+            "offset": b.temp_offset,
             "register_value": b.reg_values.get(b.temp_reg),
         }
 
@@ -95,6 +96,7 @@ class ReportedHumidity(_ZoneStatsMixin, BridgeEntity, SensorEntity):
             **self._zone_stats(),
             "register": b.hum_reg,
             "scale": b.hum_scale,
+            "offset": b.hum_offset,
             "register_value": b.reg_values.get(b.hum_reg),
         }
 

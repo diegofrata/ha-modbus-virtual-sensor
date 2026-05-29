@@ -16,6 +16,7 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_ADD_ANOTHER,
     CONF_HOST,
+    CONF_HUM_OFFSET,
     CONF_HUM_REGISTER,
     CONF_HUM_SCALE,
     CONF_HUMIDITY_ENTITY,
@@ -24,6 +25,7 @@ from .const import (
     CONF_NAME,
     CONF_PORT,
     CONF_STRATEGY,
+    CONF_TEMP_OFFSET,
     CONF_TEMP_REGISTER,
     CONF_TEMP_SCALE,
     CONF_TEMP_SIGNED,
@@ -35,6 +37,7 @@ from .const import (
     DEFAULT_IDLE_TIMEOUT,
     DEFAULT_MAX_AGE,
     DEFAULT_NAME,
+    DEFAULT_OFFSET,
     DEFAULT_PORT,
     DEFAULT_SCALE,
     DEFAULT_STRATEGY,
@@ -177,6 +180,13 @@ class ModbusVirtualSensorOptionsFlow(OptionsFlow):
                 vol.Required(
                     CONF_HUM_SCALE, default=cur.get(CONF_HUM_SCALE, DEFAULT_SCALE)
                 ): vol.Coerce(int),
+                vol.Required(
+                    CONF_TEMP_OFFSET,
+                    default=cur.get(CONF_TEMP_OFFSET, DEFAULT_OFFSET),
+                ): vol.Coerce(float),
+                vol.Required(
+                    CONF_HUM_OFFSET, default=cur.get(CONF_HUM_OFFSET, DEFAULT_OFFSET)
+                ): vol.Coerce(float),
                 vol.Required(
                     CONF_TEMP_SIGNED,
                     default=cur.get(CONF_TEMP_SIGNED, DEFAULT_TEMP_SIGNED),

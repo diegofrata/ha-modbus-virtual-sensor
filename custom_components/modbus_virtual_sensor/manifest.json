@@ -1,7 +1,7 @@
 {
   "domain": "modbus_virtual_sensor",
   "name": "Modbus Virtual Sensor",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "config_flow": true,
   "integration_type": "device",
   "iot_class": "local_push",

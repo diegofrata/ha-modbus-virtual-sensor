@@ -40,6 +40,8 @@
           "hum_register": "Humidity register",
           "temp_scale": "Temperature scale (×)",
           "hum_scale": "Humidity scale (×)",
+          "temp_offset": "Temperature calibration offset",
+          "hum_offset": "Humidity calibration offset",
           "temp_signed": "Temperature is signed",
           "idle_timeout": "Idle reconnect timeout (s, 0 = off)",
           "max_age": "Treat sensors stale after (s, 0 = off)"
@@ -47,6 +49,7 @@
         "data_description": {
           "strategy": "Wettest = report the highest-humidity zone's matched temperature & humidity. Mean/median aggregate across zones.",
           "temp_scale": "Multiplier for 0.1 resolution: 10 sends 23.5 as 235.",
+          "hum_offset": "Added to the humidity before sending, to correct a device that reads high/low. If the unit shows 10 below the real value, set +10.",
           "max_age": "A zone whose sensor hasn't updated within this time is ignored (guards against a stuck sensor)."
         }
       }

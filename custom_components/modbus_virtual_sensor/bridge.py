@@ -21,6 +21,7 @@ from homeassistant.util.unit_conversion import TemperatureConverter
 from .calc import aggregate
 from .const import (
     CONF_HOST,
+    CONF_HUM_OFFSET,
     CONF_HUM_REGISTER,
     CONF_HUM_SCALE,
     CONF_HUMIDITY_ENTITY,
@@ -28,6 +29,7 @@ from .const import (
     CONF_MAX_AGE,
     CONF_PORT,
     CONF_STRATEGY,
+    CONF_TEMP_OFFSET,
     CONF_TEMP_REGISTER,
     CONF_TEMP_SCALE,
     CONF_TEMP_SIGNED,
@@ -38,6 +40,7 @@ from .const import (
     DEFAULT_HUM_REGISTER,
     DEFAULT_IDLE_TIMEOUT,
     DEFAULT_MAX_AGE,
+    DEFAULT_OFFSET,
     DEFAULT_PORT,
     DEFAULT_SCALE,
     DEFAULT_STRATEGY,
@@ -78,6 +81,8 @@ class ModbusVirtualSensorBridge:
         self.hum_reg: int = int(cfg.get(CONF_HUM_REGISTER, DEFAULT_HUM_REGISTER))
         self.temp_scale: int = int(cfg.get(CONF_TEMP_SCALE, DEFAULT_SCALE))
         self.hum_scale: int = int(cfg.get(CONF_HUM_SCALE, DEFAULT_SCALE))
+        self.temp_offset: float = float(cfg.get(CONF_TEMP_OFFSET, DEFAULT_OFFSET))
+        self.hum_offset: float = float(cfg.get(CONF_HUM_OFFSET, DEFAULT_OFFSET))
         self.temp_signed: bool = cfg.get(CONF_TEMP_SIGNED, DEFAULT_TEMP_SIGNED)
         self.idle_timeout: float = float(cfg.get(CONF_IDLE_TIMEOUT, DEFAULT_IDLE_TIMEOUT))
         self.max_age: float = float(cfg.get(CONF_MAX_AGE, DEFAULT_MAX_AGE))
@@ -211,17 +216,22 @@ class ModbusVirtualSensorBridge:
             self.reported_humidity = round(hum, 1)
         # else: hold the last good values (don't feed garbage when all drop out)
 
+        # The reported_* values stay the TRUE room readings; the calibration
+        # offset is applied only to what we transmit (to correct a device that
+        # reads consistently high/low).
         regs: dict[int, int] = {}
         if self.reported_temp is not None:
             try:
                 regs[self.temp_reg] = to_register(
-                    self.reported_temp, self.temp_scale, self.temp_signed
+                    self.reported_temp + self.temp_offset, self.temp_scale, self.temp_signed
                 )
             except ValueError as err:
                 _LOGGER.warning("Temperature out of range: %s", err)
         if self.reported_humidity is not None:
             try:
-                regs[self.hum_reg] = to_register(self.reported_humidity, self.hum_scale, False)
+                regs[self.hum_reg] = to_register(
+                    self.reported_humidity + self.hum_offset, self.hum_scale, False
+                )
             except ValueError as err:
                 _LOGGER.warning("Humidity out of range: %s", err)
         self.reg_values = dict(regs)

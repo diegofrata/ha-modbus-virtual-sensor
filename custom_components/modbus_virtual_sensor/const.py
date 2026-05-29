@@ -22,6 +22,8 @@ CONF_TEMP_REGISTER = "temp_register"
 CONF_HUM_REGISTER = "hum_register"
 CONF_TEMP_SCALE = "temp_scale"
 CONF_HUM_SCALE = "hum_scale"
+CONF_TEMP_OFFSET = "temp_offset"
+CONF_HUM_OFFSET = "hum_offset"
 CONF_TEMP_SIGNED = "temp_signed"
 CONF_IDLE_TIMEOUT = "idle_timeout"
 CONF_MAX_AGE = "max_age"
@@ -51,6 +53,7 @@ DEFAULT_UNIT = 1             # Modbus slave address this responder answers as
 DEFAULT_HUM_REGISTER = 0
 DEFAULT_TEMP_REGISTER = 1
 DEFAULT_SCALE = 10           # 0.1 resolution -> value * 10
+DEFAULT_OFFSET = 0.0         # calibration added to the value before sending
 DEFAULT_TEMP_SIGNED = True   # temperature may go negative
 DEFAULT_IDLE_TIMEOUT = 0     # 0 = rely on TCP keepalive only
 DEFAULT_MAX_AGE = 0          # 0 = don't treat stale sensors as unavailable

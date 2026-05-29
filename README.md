@@ -47,6 +47,9 @@ CRC16) tunnelled over the bridge's transparent TCP socket.
   value is held if every zone drops out, so the master never gets garbage.
 - Configurable **slave address, register map, scaling and sign** (defaults: humidity
   register `0`, temperature register `1`, ×10 for 0.1 resolution, temperature signed).
+- **Calibration offset** per quantity — correct a master that reads consistently
+  high/low (e.g. humidity offset `+10` sends 78% so a unit that reads 10 low shows 68%).
+  The reported entities keep showing the true value; the offset applies only on the wire.
 - Temperature sources in °F are converted to °C automatically.
 - **Resilient connection**: TCP keepalive to detect dead links, capped exponential
   reconnect backoff, survives bridge reboots and Wi-Fi drops.
