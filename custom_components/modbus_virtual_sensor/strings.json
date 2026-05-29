@@ -1,0 +1,71 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Modbus Virtual Sensor",
+        "description": "Serve aggregated Home Assistant sensors to a Modbus master over an RS485↔TCP bridge (e.g. an Elfin EW11).",
+        "data": {
+          "name": "Name",
+          "host": "Bridge IP address",
+          "port": "Bridge TCP port",
+          "unit": "Modbus slave address",
+          "temperature_entities": "Temperature sources",
+          "humidity_entities": "Humidity sources"
+        },
+        "data_description": {
+          "host": "IP of the RS485↔TCP bridge (the netp TCP-server socket).",
+          "unit": "The slave address the master polls (e.g. 13).",
+          "temperature_entities": "These are aggregated into the temperature the master reads.",
+          "humidity_entities": "These are aggregated into the humidity the master reads."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This bridge address, port and slave address are already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Modbus Virtual Sensor options",
+        "data": {
+          "temperature_entities": "Temperature sources",
+          "humidity_entities": "Humidity sources",
+          "temp_aggregation": "Temperature aggregation",
+          "hum_aggregation": "Humidity aggregation",
+          "temp_register": "Temperature register",
+          "hum_register": "Humidity register",
+          "temp_scale": "Temperature scale (×)",
+          "hum_scale": "Humidity scale (×)",
+          "temp_signed": "Temperature is signed",
+          "idle_timeout": "Idle reconnect timeout (s, 0 = off)"
+        },
+        "data_description": {
+          "temp_scale": "Multiplier for 0.1 resolution: 10 sends 23.5 as 235.",
+          "idle_timeout": "Drop and reconnect after this many seconds with no poll. 0 relies on TCP keepalive."
+        }
+      }
+    }
+  },
+  "selector": {
+    "aggregation": {
+      "options": {
+        "mean": "Mean (average)",
+        "median": "Median",
+        "min": "Minimum",
+        "max": "Maximum"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "reported_temperature": { "name": "Reported temperature" },
+      "reported_humidity": { "name": "Reported humidity" },
+      "poll_count": { "name": "Poll count" },
+      "last_poll": { "name": "Last poll" }
+    },
+    "binary_sensor": {
+      "connection": { "name": "Connection" }
+    }
+  }
+}
