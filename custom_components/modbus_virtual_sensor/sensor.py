@@ -34,8 +34,7 @@ async def async_setup_entry(
 class _ZoneStatsMixin:
     """Shared 'how many zones contributed' attributes."""
 
-    @property
-    def extra_state_attributes(self) -> dict:
+    def _zone_stats(self) -> dict:
         return {
             "strategy": self._bridge.strategy,
             "zones_total": len(self._bridge.zones),
@@ -61,6 +60,16 @@ class ReportedTemperature(_ZoneStatsMixin, BridgeEntity, SensorEntity):
     def native_value(self) -> float | None:
         return self._bridge.reported_temp
 
+    @property
+    def extra_state_attributes(self) -> dict:
+        b = self._bridge
+        return {
+            **self._zone_stats(),
+            "register": b.temp_reg,
+            "scale": b.temp_scale,
+            "register_value": b.reg_values.get(b.temp_reg),
+        }
+
 
 class ReportedHumidity(_ZoneStatsMixin, BridgeEntity, SensorEntity):
     """The humidity served to the master."""
@@ -78,6 +87,16 @@ class ReportedHumidity(_ZoneStatsMixin, BridgeEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         return self._bridge.reported_humidity
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        b = self._bridge
+        return {
+            **self._zone_stats(),
+            "register": b.hum_reg,
+            "scale": b.hum_scale,
+            "register_value": b.reg_values.get(b.hum_reg),
+        }
 
 
 class ActiveZone(BridgeEntity, SensorEntity):

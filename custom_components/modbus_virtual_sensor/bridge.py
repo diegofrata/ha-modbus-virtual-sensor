@@ -90,6 +90,7 @@ class ModbusVirtualSensorBridge:
         self.reported_humidity: float | None = None
         self.active_zone: str | None = None
         self.zones_available = 0
+        self.reg_values: dict[int, int] = {}  # last registers actually served
 
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
@@ -223,6 +224,7 @@ class ModbusVirtualSensorBridge:
                 regs[self.hum_reg] = to_register(self.reported_humidity, self.hum_scale, False)
             except ValueError as err:
                 _LOGGER.warning("Humidity out of range: %s", err)
+        self.reg_values = dict(regs)
         return regs
 
     # --- networking ------------------------------------------------------
@@ -308,6 +310,11 @@ class ModbusVirtualSensorBridge:
                 responded = True
                 self.poll_count += 1
                 self.last_poll = dt_util.utcnow()
+                _LOGGER.debug(
+                    "Answered poll (start=%s qty=%s): H=%s%% T=%s°C  registers=%s",
+                    req["start"], req["qty"],
+                    self.reported_humidity, self.reported_temp, regs,
+                )
             if responded:
                 await writer.drain()
                 self._notify()
