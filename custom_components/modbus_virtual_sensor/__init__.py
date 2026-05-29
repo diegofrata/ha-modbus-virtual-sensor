@@ -13,9 +13,45 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .bridge import ModbusVirtualSensorBridge
-from .const import DOMAIN, PLATFORMS
+from .const import (
+    CONF_HUMIDITY_ENTITIES,
+    CONF_HUMIDITY_ENTITY,
+    CONF_TEMPERATURE_ENTITIES,
+    CONF_TEMPERATURE_ENTITY,
+    CONF_ZONE_NAME,
+    CONF_ZONES,
+    DOMAIN,
+    PLATFORMS,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate v1 (two flat entity lists) to v2 (zone pairs)."""
+    if entry.version >= 2:
+        return True
+
+    data = dict(entry.data)
+    temps = data.pop(CONF_TEMPERATURE_ENTITIES, []) or []
+    hums = data.pop(CONF_HUMIDITY_ENTITIES, []) or []
+    # Pair by position; a v1 setup that picked sensors room-by-room lines up.
+    data[CONF_ZONES] = [
+        {
+            CONF_ZONE_NAME: "",
+            CONF_TEMPERATURE_ENTITY: t,
+            CONF_HUMIDITY_ENTITY: h,
+        }
+        for t, h in zip(temps, hums)
+    ]
+    options = {
+        k: v
+        for k, v in entry.options.items()
+        if k not in ("temp_aggregation", "hum_aggregation")
+    }
+    hass.config_entries.async_update_entry(entry, data=data, options=options, version=2)
+    _LOGGER.info("Migrated %s to v2 with %d zone(s)", entry.title, len(data[CONF_ZONES]))
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

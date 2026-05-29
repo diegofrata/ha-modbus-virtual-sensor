@@ -16,29 +16,38 @@ from homeassistant.util.unit_conversion import TemperatureConverter
 from .calc import aggregate
 from .const import (
     CONF_HOST,
-    CONF_HUM_AGGREGATION,
     CONF_HUM_REGISTER,
     CONF_HUM_SCALE,
-    CONF_HUMIDITY_ENTITIES,
+    CONF_HUMIDITY_ENTITY,
     CONF_IDLE_TIMEOUT,
+    CONF_MAX_AGE,
     CONF_PORT,
-    CONF_TEMP_AGGREGATION,
+    CONF_STRATEGY,
     CONF_TEMP_REGISTER,
     CONF_TEMP_SCALE,
     CONF_TEMP_SIGNED,
-    CONF_TEMPERATURE_ENTITIES,
+    CONF_TEMPERATURE_ENTITY,
     CONF_UNIT,
-    DEFAULT_AGGREGATION,
+    CONF_ZONE_NAME,
+    CONF_ZONES,
     DEFAULT_HUM_REGISTER,
     DEFAULT_IDLE_TIMEOUT,
+    DEFAULT_MAX_AGE,
     DEFAULT_PORT,
     DEFAULT_SCALE,
+    DEFAULT_STRATEGY,
     DEFAULT_TEMP_REGISTER,
     DEFAULT_TEMP_SIGNED,
     DEFAULT_UNIT,
+    HUM_MAX,
+    HUM_MIN,
     RECONNECT_BASE_DELAY,
     RECONNECT_MAX_DELAY,
     SIGNAL_UPDATE,
+    STRATEGY_MEDIAN,
+    STRATEGY_WETTEST,
+    TEMP_MAX,
+    TEMP_MIN,
 )
 from .modbus_rtu import build_read_response, take_request, to_register
 
@@ -56,18 +65,17 @@ class ModbusVirtualSensorBridge:
         cfg = {**entry.data, **entry.options}
 
         self.host: str = cfg[CONF_HOST]
-        self.port: int = cfg.get(CONF_PORT, DEFAULT_PORT)
-        self.unit: int = cfg.get(CONF_UNIT, DEFAULT_UNIT)
-        self.temp_entities: list[str] = cfg.get(CONF_TEMPERATURE_ENTITIES, [])
-        self.hum_entities: list[str] = cfg.get(CONF_HUMIDITY_ENTITIES, [])
-        self.temp_agg: str = cfg.get(CONF_TEMP_AGGREGATION, DEFAULT_AGGREGATION)
-        self.hum_agg: str = cfg.get(CONF_HUM_AGGREGATION, DEFAULT_AGGREGATION)
-        self.temp_reg: int = cfg.get(CONF_TEMP_REGISTER, DEFAULT_TEMP_REGISTER)
-        self.hum_reg: int = cfg.get(CONF_HUM_REGISTER, DEFAULT_HUM_REGISTER)
-        self.temp_scale: int = cfg.get(CONF_TEMP_SCALE, DEFAULT_SCALE)
-        self.hum_scale: int = cfg.get(CONF_HUM_SCALE, DEFAULT_SCALE)
+        self.port: int = int(cfg.get(CONF_PORT, DEFAULT_PORT))
+        self.unit: int = int(cfg.get(CONF_UNIT, DEFAULT_UNIT))
+        self.zones: list[dict] = cfg.get(CONF_ZONES, [])
+        self.strategy: str = cfg.get(CONF_STRATEGY, DEFAULT_STRATEGY)
+        self.temp_reg: int = int(cfg.get(CONF_TEMP_REGISTER, DEFAULT_TEMP_REGISTER))
+        self.hum_reg: int = int(cfg.get(CONF_HUM_REGISTER, DEFAULT_HUM_REGISTER))
+        self.temp_scale: int = int(cfg.get(CONF_TEMP_SCALE, DEFAULT_SCALE))
+        self.hum_scale: int = int(cfg.get(CONF_HUM_SCALE, DEFAULT_SCALE))
         self.temp_signed: bool = cfg.get(CONF_TEMP_SIGNED, DEFAULT_TEMP_SIGNED)
-        self.idle_timeout: float = cfg.get(CONF_IDLE_TIMEOUT, DEFAULT_IDLE_TIMEOUT)
+        self.idle_timeout: float = float(cfg.get(CONF_IDLE_TIMEOUT, DEFAULT_IDLE_TIMEOUT))
+        self.max_age: float = float(cfg.get(CONF_MAX_AGE, DEFAULT_MAX_AGE))
 
         # Diagnostics surfaced as entities
         self.connected = False
@@ -75,8 +83,8 @@ class ModbusVirtualSensorBridge:
         self.last_poll = None
         self.reported_temp: float | None = None
         self.reported_humidity: float | None = None
-        self.temp_available = 0
-        self.hum_available = 0
+        self.active_zone: str | None = None
+        self.zones_available = 0
 
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
@@ -103,44 +111,66 @@ class ModbusVirtualSensorBridge:
                 await self._task
 
     # --- source reading & aggregation ------------------------------------
-    def _read_humidity(self, entity_id: str) -> float | None:
+    def _fresh_state(self, entity_id: str):
+        """Return the state if present, available and (optionally) not stale."""
         state = self.hass.states.get(entity_id)
         if state is None or state.state in _UNAVAILABLE:
             return None
-        try:
-            return float(state.state)
-        except (ValueError, TypeError):
-            return None
+        if self.max_age:
+            last = getattr(state, "last_reported", None) or state.last_updated
+            if last is not None and (dt_util.utcnow() - last).total_seconds() > self.max_age:
+                return None
+        return state
 
-    def _read_temperature(self, entity_id: str) -> float | None:
-        state = self.hass.states.get(entity_id)
-        if state is None or state.state in _UNAVAILABLE:
+    def _read_humidity(self, entity_id: str) -> float | None:
+        state = self._fresh_state(entity_id)
+        if state is None:
             return None
         try:
             value = float(state.state)
         except (ValueError, TypeError):
             return None
-        # Normalise to Celsius so mixed-unit sources aggregate correctly.
+        return value if HUM_MIN <= value <= HUM_MAX else None
+
+    def _read_temperature(self, entity_id: str) -> float | None:
+        state = self._fresh_state(entity_id)
+        if state is None:
+            return None
+        try:
+            value = float(state.state)
+        except (ValueError, TypeError):
+            return None
         if state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) == UnitOfTemperature.FAHRENHEIT:
             value = TemperatureConverter.convert(
                 value, UnitOfTemperature.FAHRENHEIT, UnitOfTemperature.CELSIUS
             )
-        return value
+        return value if TEMP_MIN <= value <= TEMP_MAX else None
 
     @callback
     def _compute_registers(self) -> dict[int, int]:
-        """Aggregate current source values and render them as registers."""
-        temps = [self._read_temperature(e) for e in self.temp_entities]
-        hums = [self._read_humidity(e) for e in self.hum_entities]
-        self.temp_available = sum(v is not None for v in temps)
-        self.hum_available = sum(v is not None for v in hums)
+        """Read every zone, apply the strategy, and render Modbus registers."""
+        readings = []  # (zone_name, temperature_c, humidity)
+        for zone in self.zones:
+            temp = self._read_temperature(zone[CONF_TEMPERATURE_ENTITY])
+            hum = self._read_humidity(zone[CONF_HUMIDITY_ENTITY])
+            if temp is None or hum is None:
+                continue  # only fully-valid zones contribute a matched pair
+            name = zone.get(CONF_ZONE_NAME) or zone[CONF_HUMIDITY_ENTITY]
+            readings.append((name, temp, hum))
+        self.zones_available = len(readings)
 
-        temp = aggregate(temps, self.temp_agg)
-        hum = aggregate(hums, self.hum_agg)
-        if temp is not None:
+        if readings:
+            if self.strategy == STRATEGY_WETTEST:
+                name, temp, hum = max(readings, key=lambda r: r[2])
+                self.active_zone = name
+            else:
+                method = STRATEGY_MEDIAN if self.strategy == STRATEGY_MEDIAN else "mean"
+                temp = aggregate([r[1] for r in readings], method)
+                hum = aggregate([r[2] for r in readings], method)
+                self.active_zone = f"{method} of {len(readings)} zones"
             self.reported_temp = round(temp, 1)
-        if hum is not None:
             self.reported_humidity = round(hum, 1)
+        # else: hold the last good values (don't feed garbage when all drop out)
 
         regs: dict[int, int] = {}
         if self.reported_temp is not None:

@@ -24,14 +24,28 @@ async def async_setup_entry(
         [
             ReportedTemperature(bridge),
             ReportedHumidity(bridge),
+            ActiveZone(bridge),
             PollCount(bridge),
             LastPoll(bridge),
         ]
     )
 
 
-class ReportedTemperature(BridgeEntity, SensorEntity):
-    """The aggregated temperature served to the master."""
+class _ZoneStatsMixin:
+    """Shared 'how many zones contributed' attributes."""
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "strategy": self._bridge.strategy,
+            "zones_total": len(self._bridge.zones),
+            "zones_available": self._bridge.zones_available,
+            "active_zone": self._bridge.active_zone,
+        }
+
+
+class ReportedTemperature(_ZoneStatsMixin, BridgeEntity, SensorEntity):
+    """The temperature served to the master."""
 
     _attr_translation_key = "reported_temperature"
     _attr_name = "Reported temperature"
@@ -47,17 +61,9 @@ class ReportedTemperature(BridgeEntity, SensorEntity):
     def native_value(self) -> float | None:
         return self._bridge.reported_temp
 
-    @property
-    def extra_state_attributes(self) -> dict:
-        return {
-            "aggregation": self._bridge.temp_agg,
-            "sources_total": len(self._bridge.temp_entities),
-            "sources_available": self._bridge.temp_available,
-        }
 
-
-class ReportedHumidity(BridgeEntity, SensorEntity):
-    """The aggregated humidity served to the master."""
+class ReportedHumidity(_ZoneStatsMixin, BridgeEntity, SensorEntity):
+    """The humidity served to the master."""
 
     _attr_translation_key = "reported_humidity"
     _attr_name = "Reported humidity"
@@ -73,13 +79,20 @@ class ReportedHumidity(BridgeEntity, SensorEntity):
     def native_value(self) -> float | None:
         return self._bridge.reported_humidity
 
+
+class ActiveZone(BridgeEntity, SensorEntity):
+    """Which zone (or aggregation) is currently driving the reported values."""
+
+    _attr_translation_key = "active_zone"
+    _attr_name = "Active zone"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, bridge: ModbusVirtualSensorBridge) -> None:
+        super().__init__(bridge, "active_zone")
+
     @property
-    def extra_state_attributes(self) -> dict:
-        return {
-            "aggregation": self._bridge.hum_agg,
-            "sources_total": len(self._bridge.hum_entities),
-            "sources_available": self._bridge.hum_available,
-        }
+    def native_value(self) -> str | None:
+        return self._bridge.active_zone
 
 
 class PollCount(BridgeEntity, SensorEntity):

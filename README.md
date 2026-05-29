@@ -38,17 +38,20 @@ CRC16) tunnelled over the bridge's transparent TCP socket.
 
 ## Features
 
-- Select **multiple** temperature and humidity source entities; unavailable ones are
-  skipped automatically, and the last good value is held if they all drop out.
-- Per-quantity **aggregation**: `mean`, `median`, `min`, or `max`
-  (e.g. chase the *wettest* room with `max` humidity).
+- Define **zones** — each zone is a matched **temperature + humidity pair** for one room.
+- **Aggregation strategy** (per device):
+  - **Wettest** (default) — report the highest-humidity zone's *matched* temperature and
+    humidity. Worst-case control: keep every room below target (ideal for a dehumidifier).
+  - **Mean / Median** — aggregate temperature and humidity across zones.
+- Unavailable, implausible or (optionally) **stale** sensors are skipped; the last good
+  value is held if every zone drops out, so the master never gets garbage.
 - Configurable **slave address, register map, scaling and sign** (defaults: humidity
   register `0`, temperature register `1`, ×10 for 0.1 resolution, temperature signed).
-- Temperature sources in °F are converted to °C before aggregating.
+- Temperature sources in °F are converted to °C automatically.
 - **Resilient connection**: TCP keepalive to detect dead links, capped exponential
   reconnect backoff, survives bridge reboots and Wi-Fi drops.
-- Diagnostic entities: connection status, reported temperature/humidity, poll count,
-  last poll time. Fully UI-configured (config + options flow).
+- Diagnostic entities: connection status, reported temperature/humidity, **active zone**,
+  poll count, last poll time. Fully UI-configured (config + options flow).
 
 ## Installation
 
@@ -71,17 +74,19 @@ Set up entirely in the UI:
 | Name | Friendly name / device name |
 | Bridge IP / Port | The RS485↔TCP bridge's TCP-server socket (EW11 `netp`, default `8899`) |
 | Modbus slave address | The address the master polls (e.g. `13`) |
-| Temperature / Humidity sources | The HA sensors to aggregate |
+| Zones | One temperature + humidity pair per room; add as many as you like |
 
-Aggregation methods and the register mapping/scaling live under the integration's
-**Configure** (options) dialog and can be changed anytime.
+The aggregation **strategy**, register mapping/scaling and the stale-sensor timeout live
+under the integration's **Configure** (options) dialog and can be changed anytime.
+(To change zones, remove and re-add the integration.)
 
 ## Example: ducted dehumidifier external sensor
 
 A dehumidifier with *"External temp & humidity sensor, MODBUS RTU RS485, Address 13,
 9600 8N1, Humidity 0x0000, Temperature 0x0001, 0.1 resolution"* — set slave address
-`13`, humidity register `0`, temperature register `1`, scale `10`. Pick the room
-sensors in the ducted zones; use `mean` temperature and (optionally) `max` humidity.
+`13`, humidity register `0`, temperature register `1`, scale `10`. Add one zone per
+ducted room (its temperature + humidity sensors) and keep the default **wettest**
+strategy, so the unit always works to satisfy the dampest room.
 
 **Bridge (EW11) settings:** UART `9600 8N1`, Flow Control `Half Duplex`, UART Protocol
 `Modbus`; a transparent `netp` socket set to **TCP Server** on `8899`, Route `Uart`.
