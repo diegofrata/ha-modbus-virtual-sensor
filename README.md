@@ -88,8 +88,15 @@ A dehumidifier with *"External temp & humidity sensor, MODBUS RTU RS485, Address
 ducted room (its temperature + humidity sensors) and keep the default **wettest**
 strategy, so the unit always works to satisfy the dampest room.
 
-**Bridge (EW11) settings:** UART `9600 8N1`, Flow Control `Half Duplex`, UART Protocol
-`Modbus`; a transparent `netp` socket set to **TCP Server** on `8899`, Route `Uart`.
+**Bridge (EW11) settings:** UART `9600 8N1`, Flow Control `Half Duplex`, and **UART
+Protocol `None` (transparent)** — *not* `Modbus`. Modbus mode puts the EW11 into
+TCP-master→serial-slaves gateway mode; since here the master is on the *serial* side,
+it won't forward the polls. Use a `netp` socket set to **TCP Server** on `8899`,
+Route `Uart`.
+
+> **Troubleshooting:** if the EW11's *Serial Port State* shows received frames but the
+> *netp* socket's *Sent Bytes* stays `0`, the UART protocol is set to `Modbus` — switch
+> it to `None` (transparent).
 
 ## Standalone tester
 
