@@ -79,9 +79,13 @@ Set up entirely in the UI:
 | Modbus slave address | The address the master polls (e.g. `13`) |
 | Zones | One temperature + humidity pair per room; add as many as you like |
 
-The aggregation **strategy**, register mapping/scaling and the stale-sensor timeout live
-under the integration's **Configure** (options) dialog and can be changed anytime.
-(To change zones, remove and re-add the integration.)
+Everything else lives under the integration's **Configure** (options) dialog and can be
+changed anytime:
+
+- **Settings** — aggregation strategy, register mapping/scaling, calibration offsets,
+  stale-sensor timeout.
+- **Add a zone** / **Remove zones** — edit the sensor pairs after setup. The integration
+  reloads automatically.
 
 ## Example: ducted dehumidifier external sensor
 

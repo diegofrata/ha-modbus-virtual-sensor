@@ -34,6 +34,15 @@
     "step": {
       "init": {
         "title": "Modbus Virtual Sensor options",
+        "description": "Zones configured: {count}.",
+        "menu_options": {
+          "settings": "Settings (strategy, registers, calibration)",
+          "add_zone": "Add a zone",
+          "remove_zone": "Remove zones"
+        }
+      },
+      "settings": {
+        "title": "Modbus Virtual Sensor settings",
         "data": {
           "strategy": "Aggregation strategy",
           "temp_register": "Temperature register",
@@ -52,7 +61,26 @@
           "hum_offset": "Added to the humidity before sending, to correct a device that reads high/low. If the unit shows 10 below the real value, set +10.",
           "max_age": "A zone whose sensor hasn't updated within this time is ignored (guards against a stuck sensor)."
         }
+      },
+      "add_zone": {
+        "title": "Add a zone",
+        "description": "A zone is one room's matched temperature + humidity pair. Zones configured: {count}.",
+        "data": {
+          "zone_name": "Zone name (optional)",
+          "temperature_entity": "Temperature sensor",
+          "humidity_entity": "Humidity sensor"
+        }
+      },
+      "remove_zone": {
+        "title": "Remove zones",
+        "description": "Tick the zones to remove.",
+        "data": {
+          "zones": "Zones"
+        }
       }
+    },
+    "error": {
+      "at_least_one": "At least one zone must remain."
     }
   },
   "selector": {
@@ -66,14 +94,26 @@
   },
   "entity": {
     "sensor": {
-      "reported_temperature": { "name": "Reported temperature" },
-      "reported_humidity": { "name": "Reported humidity" },
-      "active_zone": { "name": "Active zone" },
-      "poll_count": { "name": "Poll count" },
-      "last_poll": { "name": "Last poll" }
+      "reported_temperature": {
+        "name": "Reported temperature"
+      },
+      "reported_humidity": {
+        "name": "Reported humidity"
+      },
+      "active_zone": {
+        "name": "Active zone"
+      },
+      "poll_count": {
+        "name": "Poll count"
+      },
+      "last_poll": {
+        "name": "Last poll"
+      }
     },
     "binary_sensor": {
-      "connection": { "name": "Connection" }
+      "connection": {
+        "name": "Connection"
+      }
     }
   }
 }
